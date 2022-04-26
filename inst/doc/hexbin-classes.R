@@ -1,4 +1,4 @@
-## ------------------------------------------------------------------------
+## ---- fig.width=10,fig.height=8, out.width="90%"------------------------------
 library(hextri)
 data(airquality)
 airquality$o3group<-with(airquality, cut(Ozone, c(0,18,60,Inf)))
@@ -8,35 +8,35 @@ with(na.omit(airquality),
             xlab="Solar radiation (langley)", ylab="Temperature (F)")
 )
 
-## ---- fig.height=4, fig.width=12-----------------------------------------
+## ---- fig.width=10,fig.height=8, out.width="90%"------------------------------
 library(lattice)
 xyplot(Temp~Solar.R|equal.count(Wind,4), groups=o3group, panel=panel.hextri,
   data=na.omit(airquality), colours=c("royalblue","grey60","goldenrod"),
   strip=strip.custom(var.name="Wind Speed"),
   xlab="Solar Radiation (langley)",ylab="Temperature (F)")
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10,fig.height=8 , out.width="90%"-----------------------------
 data(NHANES, package="hexbin")
 with(na.omit(NHANES[,-8]), hextri(Age,Hemoglobin, class=Sex,colour=c("orange","purple"),
     nbins=20,xlab="Age",ylab="Serum haemoglobin"))
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10,fig.height=8, out.width="90%"------------------------------
 with(na.omit(NHANES[,-8]), hextri(Age,Hemoglobin, class=Sex,colour=c("orange","purple"),
     nbins=20,xlab="Age",ylab="Serum haemoglobin", diffuse=TRUE))
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10,fig.height=8 , out.width="90%"-----------------------------
 with(na.omit(NHANES[,-8]), hextri(Age,Hemoglobin, class=Sex,colour=c("orange","purple"),
     nbins=20,xlab="Age",ylab="Serum haemoglobin",style="size"))
 
 with(na.omit(NHANES[,-8]), hextri(Age,Hemoglobin, class=Sex,colour=c("orange","purple"),
     nbins=20,xlab="Age",ylab="Serum haemoglobin", diffuse=TRUE,style="size"))
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10,fig.height=8, out.width="90%"------------------------------
 xyplot(Hemoglobin~Age|equal.count(Diet.Iron, 6),groups=Sex, data=na.omit(NHANES[,-8]), 
   colour=c("orange","purple"),panel=panel.hextri, 
   strip=strip.custom(var.name="Dietary iron"),style="size",diffuse=TRUE)
 
-## ------------------------------------------------------------------------
+## ---- fig.width=10,fig.height=8, out.width="90%"------------------------------
 xx<-rnorm(1000)
 yy<-rnorm(1000)
 cc<-cut(xx*yy,c(-Inf,-.4,0,.4,Inf))

@@ -1,8 +1,14 @@
 
-hexen<-function(center_x,center_y,radii,cols,border=FALSE,asp=1){
+hexen<-function(center_x,center_y,radii,cols,border=FALSE,asp=1, minr=0){
 	x<-as.vector(t(outer(radii,tri_x)+center_x))
 	y<-as.vector(t(outer(radii*asp,tri_y)+center_y))
-	polygon(x,y,col=as.vector(t(cols)),border=if(border) NA else as.vector(t(cols)))
+        toosmall<- radii < minr
+        if (any(toosmall))
+            points(center_x[toosmall],center_y[toosmall], col=cols[toosmall,1],pch=19,cex=0.5)
+
+        cols[toosmall,]<-NA
+        polygon(x,y,col=as.vector(t(cols)),border=if(border) NA else as.vector(t(cols)))
+
 	invisible(list(x=x,y=y,col=as.vector(t(cols))))
 }
 
@@ -27,12 +33,12 @@ sainte_lague= function(votes, nseats){
 hextri<-function(x, ...){ UseMethod("hextri")}
 
 hextri.formula<-function(x, data=parent.frame(), class,colours,nbins=10,border=TRUE, diffuse=FALSE,
-        style=c("alpha","size"),weights=NULL,sorted=!diffuse,xlab=NULL, ylab=NULL,...){
+        style=c("alpha","size"),weights=NULL,sorted=!diffuse, xlab=NULL, ylab=NULL,minfrac=0,...){
     if ((length(x)!=3) || length(x[[3]])>2)
         stop("formula must have one LHS and one RHS term")
     m<-match.call(expand.dots=FALSE)
     m$formula<-m$x
-    m$x<-m$colours<-m$nbins<-m$border<-m$diffuse<-m$style<-m$sorted<-m$"..."<-NULL
+    m$x<-m$colours<-m$nbins<-m$border<-m$diffuse<-m$style<-m$sorted<-m$xlab<-m$ylab<-m$"..."<-m$minfrac<-NULL
     m[[1]]<-as.name("model.frame")
     mf<-eval.parent(m)
     .y<-mf[[1]]
@@ -44,26 +50,36 @@ hextri.formula<-function(x, data=parent.frame(), class,colours,nbins=10,border=T
     if (is.null(xlab)) xlab<-labels[2]
     hextri(.x,.y,class=class,weights=wt, colours=colours, nbins=nbins,
            border=border, diffuse=diffuse, style=style, sorted=sorted,
-           xlab=xlab,ylab=ylab,...)
+           xlab=xlab,ylab=ylab,minfrac=minfrac,...)
 }
 
 hextri.default<-function(x,y,class,colours,nbins=10,border=TRUE, diffuse=FALSE,
-        style=c("alpha","size"),weights=NULL,sorted=!diffuse,...){
-  style<-match.arg(style)
-  if(!diffuse){
-  switch(style,
-    size=hexclass(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,...),
-    alpha=hexclass1(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,...)
-  )
-  } else {
+        style=c("alpha","size"),weights=NULL,sorted=!diffuse,minfrac=0,...){
+    if (is.null(weights)){
+        temp<-na.omit(data.frame(x,y,class))
+    } else {
+        temp<-na.omit(data.frame(x,y,class,weights))
+        weights<-temp$weights
+    }        
+    x<-temp$x
+    y<-temp$y
+    class<-temp$class
+    
+    style<-match.arg(style)
+    if(!diffuse){
+        switch(style,
+               size=hexclass(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,minfrac=minfrac,...),
+               alpha=hexclass1(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,minfrac=minfrac,...)
+               )
+    } else {
   	switch(style,
-    size=hexclass_diffuse(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,...),
-    alpha=hexclass1_diffuse(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,...)
-  )
-  }
+               size=hexclass_diffuse(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,minfrac=minfrac,...),
+               alpha=hexclass1_diffuse(x,y,class,colours,nbins=nbins,border=border,weights=weights,sorted=sorted,minfrac=minfrac,...)
+               )
+    }
 }
 
-hexclass<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,...){
+hexclass<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,minfrac,...){
 	plot(x,y,type="n",...)
 	pin<-par("pin")
 	h<-hexbin(x,y,IDs=TRUE,xbins=nbins,shape=pin[2]/pin[1])
@@ -76,13 +92,13 @@ hexclass<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,.
 	allocations<-apply(tab,1,sainte_lague,6)
         if(!sorted) allocations<-apply(allocations,1,sample)
 	full_radius<-diff(h@xbnds)/h@xbins/sqrt(3)
-	radii<-full_radius*sqrt(h@count/max(h@count))
+	radii<-full_radius*sqrt(rowSums(tab)/max(rowSums(tab))) #sqrt(h@count/max(h@count))
 	col_matrix<-matrix(colours[t(allocations)],nrow=ncol(allocations))
-	hexen(centers$x,centers$y,radii, col_matrix,border=border,asp=asp)
+	hexen(centers$x,centers$y,radii, col_matrix,border=border,asp=asp,minr=minfrac*full_radius)
 }
 
 
-hexclass1<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,...){
+hexclass1<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,minfrac,...){
 	plot(x,y,type="n",...)
 	pin<-par("pin")
 	h<-hexbin(x,y,IDs=TRUE,xbins=nbins,shape=pin[2]/pin[1])
@@ -100,11 +116,11 @@ hexclass1<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,
 	rgb<-col2rgb(all_colours)
 	alpha_colours<-rgb(rgb[1,],rgb[2,],rgb[3,],255*alpha,max=255)
 	col_matrix<-matrix(alpha_colours,nrow=ncol(allocations))
-	hexen(centers$x,centers$y,rep(0.95*full_radius,length(centers$x)), col_matrix,border=border,asp=asp)
+	hexen(centers$x,centers$y,rep(0.95*full_radius,length(centers$x)), col_matrix,border=border,asp=asp,minr=minfrac*full_radius)
 }
 
 
-hexclass_diffuse<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,...){
+hexclass_diffuse<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,minfrac,...){
 	plot(x,y,type="n",...)
 	pin<-par("pin")
 	h<-hexbin(x,y,IDs=TRUE,xbins=nbins,shape=pin[2]/pin[1])
@@ -116,13 +132,13 @@ hexclass_diffuse<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,
 		tab<-xtabs(weights~h@cID+class)
 	allocations<-diffuse(h,tab,sorted)
 	full_radius<-diff(h@xbnds)/h@xbins/sqrt(3)
-	radii<-full_radius*sqrt(h@count/max(h@count))
+	radii<-full_radius*sqrt(rowSums(tab)/max(rowSums(tab))) #sqrt(h@count/max(h@count))
 	col_matrix<-matrix(colours[t(allocations)],nrow=ncol(allocations))
-	hexen(centers$x,centers$y,radii, col_matrix,border=border,asp=asp)
+	hexen(centers$x,centers$y,radii, col_matrix,border=border,asp=asp,minr=minfrac*full_radius)
 }
 
 
-hexclass1_diffuse<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,...){
+hexclass1_diffuse<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL,sorted,minfrac,...){
 	plot(x,y,type="n",...)
 	pin<-par("pin")
 	h<-hexbin(x,y,IDs=TRUE,xbins=nbins,shape=pin[2]/pin[1])
@@ -139,6 +155,6 @@ hexclass1_diffuse<-function(x,y,class,colours,nbins=10,border=FALSE,weights=NULL
 	rgb<-col2rgb(all_colours)
 	alpha_colours<-rgb(rgb[1,],rgb[2,],rgb[3,],255*alpha,max=255)
 	col_matrix<-matrix(alpha_colours,nrow=ncol(allocations))
-	hexen(centers$x,centers$y,rep(0.95*full_radius,length(centers$x)), col_matrix,border=border,asp=asp)
+	hexen(centers$x,centers$y,rep(0.95*full_radius,length(centers$x)), col_matrix,border=border,asp=asp,minr=minfrac*full_radius)
 }
 
